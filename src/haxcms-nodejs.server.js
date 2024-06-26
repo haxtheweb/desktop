@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 // lib dependencies
-var argv = require('minimist')(process.argv.slice(2));
 const express = require('express');
 // load config from dot files
 require('dotenv').config()
@@ -9,7 +8,6 @@ const helmet = require('helmet');
 const app = express();
 const mime = require('mime');
 const path = require('path');
-const fs = require("fs-extra");
 const server = require('http').Server(app);
 let liveReloadServer;
 // HAXcms core settings
@@ -32,22 +30,6 @@ let publicDir = path.join(__dirname, '../../node_modules/@haxtheweb/haxcms-nodej
 // @note no idea why these need set they don't work without them
 app.set("views", path.join(__dirname, "..", "views"));
 app.set("view engine", "ejs");
-console.log(publicDir);
-// if in development, live reload
-if (process.env.NODE_ENV === "development") {
-  const livereload = require("livereload");
-  liveReloadServer = livereload.createServer({
-    delay: 100
-  });
-  const connectLiveReload = require("connect-livereload");
-  liveReloadServer.watch(__dirname);
-  liveReloadServer.server.once("connection", () => {
-    setTimeout(() => {
-      liveReloadServer.refresh("/");
-    }, 100);
-  });
-  app.use(connectLiveReload());
-}
 app.use(express.urlencoded({limit: '50mb',  extended: false, parameterLimit: 50000 }));
 app.use(helmet({
   contentSecurityPolicy: false,
@@ -340,7 +322,6 @@ function handleServerError(e) {
 
 server.on("error", handleServerError);
 const logger = require("morgan");
-const createError = require("http-errors");
 app.use(logger("dev"));
 app.use((err, req, res, _next) => {
   res.locals.title = "error";

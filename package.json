@@ -9,7 +9,7 @@
     "author": "HAXTheWeb core team",
     "license": "Apache-2.0",
     "engines": {
-      "node": ">=18.20.3"
+        "node": ">=18.20.3"
     },
     "files": [
         "dist"
@@ -26,29 +26,51 @@
         "start": "npm run build && electron .",
         "build": "babel src --out-dir dist/src --copy-files --include-dotfiles",
         "release": "npm run build && commit-and-tag-version && git push --follow-tags origin main && npm publish",
-        "pack": "npm run build && cd .. && npx @electron/packager ./desktop/ haxtheweb-desktop --executable-name=haxtheweb-desktop --out=./desktop/builds --icon=./desktop/dist/favicon.ico --ignore=\"^(?!(.*node_modules|.*dist))(.*src.*.*screenshots.*|.*tsconfig.*|.*_sites.*|.*_published.*|.*_archived.*|.*builds.*|.*README.*|.*git.*)\" --asar.unpack=*.{node,dll,db} --overwrite"
+        "pack-deb64": "npm run build && cd .. && npx @electron/packager ./desktop/ haxtheweb-desktop --executable-name=haxtheweb-desktop --out=./desktop/builds --icon=./desktop/dist/src/favicon.ico --ignore=\"^(?!(.*node_modules|.*dist))(.*src.*|.*screenshots.*|.*tsconfig.*|.*_sites.*|.*_published.*|.*_archived.*|.*builds.*|.*README.*|.*git.*)\" --overwrite && cd desktop && npm run fixbuildissue-deb64",
+        "pack-win32": "npm run build && cd .. && npx @electron/packager ./desktop/ haxtheweb-desktop --executable-name=haxtheweb-desktop --out=./desktop/builds --platform win32 --arch x64 --icon=./desktop/dist/src/favicon.ico --ignore=\"^(?!(.*node_modules|.*dist))(.*src.*|.*screenshots.*|.*tsconfig.*|.*_sites.*|.*_published.*|.*_archived.*|.*builds.*|.*README.*|.*git.*)\" --overwrite && cd desktop && npm run fixbuildissue-win32",
+        "fixbuildissue-deb64": "rm -rf builds/haxtheweb-desktop-linux-x64/resources/app/node_modules/@haxtheweb/haxcms-nodejs/dist/public/build && cp -R node_modules/@haxtheweb/haxcms-nodejs/dist/public/build builds/haxtheweb-desktop-linux-x64/resources/app/node_modules/@haxtheweb/haxcms-nodejs/dist/public/build",
+        "fixbuildissue-win32": "rm -rf builds/haxtheweb-desktop-win32-x64/resources/app/node_modules/@haxtheweb/haxcms-nodejs/dist/public/build && cp -R node_modules/@haxtheweb/haxcms-nodejs/dist/public/build builds/haxtheweb-desktop-win32-x64/resources/app/node_modules/@haxtheweb/haxcms-nodejs/dist/public/build",
+        "deb64": "npm run pack-deb64 && electron-installer-debian --src ./builds/haxtheweb-desktop-linux-x64/ --dest ./builds/installers/ --arch amd64",
+        "win32": "npm run pack-win32 && electron-installer-windows --src ./builds/haxtheweb-desktop-win32-x64/ --dest ./builds/installers/"
     },
     "dependencies": {
-        "body-parser": "^1.20.2",
-        "cookie-parser": "^1.4.6",
-        "debug": "^4.3.4",
-        "ejs": "^3.1.9",
-        "express": "^4.19.2",
-        "http-errors": "^2.0.0",
-        "morgan": "^1.10.0",
-        "mime": "3.0.0",
-        "node-fetch": "^2.7.0",
-        "serve-favicon": "^2.5.0",
+        "@electron/remote": "2.1.2",
         "@haxtheweb/haxcms-nodejs": "^0.0.15",
-        "@electron/remote": "2.1.2"
+        "archiver": "7.0.1",
+        "body-parser": "^1.20.2",
+        "cookie-parser": "1.4.6",
+        "debug": "^4.3.4",
+        "dotenv": "16.4.5",
+        "ejs": "^3.1.9",
+        "express": "4.19.2",
+        "fs-extra": "11.2.0",
+        "git-interface": "2.1.2",
+        "helmet": "7.1.0",
+        "http-errors": "^2.0.0",
+        "jsonwebtoken": "9.0.2",
+        "locutus": "2.0.32",
+        "mime": "3.0.0",
+        "minimist": "1.2.8",
+        "morgan": "^1.10.0",
+        "multer": "1.4.5-lts.1",
+        "node-fetch": "^2.7.0",
+        "open": "8.4.2",
+        "serve-favicon": "^2.5.0",
+        "sharp": "^0.33.4",
+        "twig": "1.17.1",
+        "utf8": "3.0.0",
+        "uuid": "10.0.0",
+        "yaml": "2.4.5"
     },
     "devDependencies": {
-        "electron": "^31.1.0",
-        "commit-and-tag-version": "12.4.1",
         "@babel/cli": "^7.24.6",
         "@babel/core": "^7.24.6",
+        "@babel/preset-env": "7.24.6",
         "@babel/register": "^7.24.6",
         "babel-plugin-transform-dynamic-import": "^2.1.0",
-        "@babel/preset-env": "7.24.6"
+        "commit-and-tag-version": "12.4.1",
+        "electron": "^31.1.0",
+        "electron-installer-debian": "3.2.0",
+        "electron-installer-windows": "3.0.0"
     }
 }

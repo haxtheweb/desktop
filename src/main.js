@@ -1,18 +1,13 @@
-import { app, globalShortcut, BrowserWindow, ipcMain, nativeTheme } from "electron";
+import { app, globalShortcut, BrowserWindow, ipcMain, nativeTheme, utilityProcess } from "electron";
 import * as remoteMain from '@electron/remote/main';
 remoteMain.initialize();
-import { spawn } from "child_process";
 import path from "path";
 import fetch from "node-fetch";
-import { name } from "../package.json";
+import "./haxcms-nodejs.server.js";
+
 const expressPort = process.env.PORT || 8080;
-const appName = app.getPath("exe");
 const expressAppUrl = `http://127.0.0.1:${expressPort}`;
 let mainWindow;
-
-const expressPath = appName.endsWith(`${name}.exe`)
-  ? path.join("./resources/app.asar", "./dist/src/haxcms-nodejs.js")
-  : "./dist/src/haxcms-nodejs.js";
 
 function stripAnsiColors(text) {
   return text.replace(
@@ -23,6 +18,7 @@ function stripAnsiColors(text) {
 
 function redirectOutput(stream) {
   stream.on("data", (data) => {
+    console.log(data);
     if (!mainWindow) return;
     data.toString().split("\n").forEach((line) => {
       if (line !== "") {
@@ -43,9 +39,6 @@ function unregisterAllShortcuts() {
 }
 
 function createWindow() {
-  const expressAppProcess = spawn(appName, [expressPath], { env: { ELECTRON_RUN_AS_NODE: "1" } });
-  [expressAppProcess.stdout, expressAppProcess.stderr].forEach(redirectOutput);
-
   mainWindow = new BrowserWindow({
     autoHideMenuBar: true,
     width: 1080,
@@ -69,7 +62,6 @@ function createWindow() {
 
   mainWindow.on("closed", () => {
     mainWindow = null;
-    expressAppProcess.kill();
   });
 
   mainWindow.on("focus", registerGlobalShortcuts);
