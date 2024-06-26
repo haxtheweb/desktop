@@ -1,0 +1,54 @@
+{
+    "name": "haxtheweb-desktop",
+    "description": "HAX Electron app to run haxcms-nodejs via desktop app launcher",
+    "version": "0.0.0",
+    "main": "./dist/src/main.js",
+    "icon": "./dist/favicon.ico",
+    "basePath": "./dist",
+    "productName": "haxtheweb-desktop",
+    "author": "HAXTheWeb core team",
+    "license": "Apache-2.0",
+    "engines": {
+      "node": ">=18.20.3"
+    },
+    "files": [
+        "dist"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/haxtheweb/desktop.git"
+    },
+    "bugs": {
+        "url": "https://github.com/haxtheweb/issues/issues"
+    },
+    "private": true,
+    "scripts": {
+        "start": "npm run build && electron .",
+        "build": "babel src --out-dir dist/src --copy-files --include-dotfiles",
+        "release": "npm run build && commit-and-tag-version && git push --follow-tags origin main && npm publish",
+        "pack": "npm run build && cd .. && npx @electron/packager ./desktop/ haxtheweb-desktop --executable-name=haxtheweb-desktop --out=./desktop/builds --icon=./desktop/dist/favicon.ico --ignore=\"^(?!(.*node_modules|.*dist))(.*src.*.*screenshots.*|.*tsconfig.*|.*_sites.*|.*_published.*|.*_archived.*|.*builds.*|.*README.*|.*git.*)\" --asar.unpack=*.{node,dll,db} --overwrite"
+    },
+    "dependencies": {
+        "body-parser": "^1.20.2",
+        "cookie-parser": "^1.4.6",
+        "debug": "^4.3.4",
+        "ejs": "^3.1.9",
+        "express": "^4.19.2",
+        "http-errors": "^2.0.0",
+        "morgan": "^1.10.0",
+        "mime": "3.0.0",
+        "node-fetch": "^2.7.0",
+        "serve-favicon": "^2.5.0",
+        "@haxtheweb/haxcms-nodejs": "^0.0.15",
+        "@electron/remote": "2.1.2"
+    },
+    "devDependencies": {
+        "electron": "^31.1.0",
+        "commit-and-tag-version": "12.4.1",
+        "@babel/cli": "^7.24.6",
+        "@babel/core": "^7.24.6",
+        "@babel/register": "^7.24.6",
+        "babel-plugin-transform-dynamic-import": "^2.1.0",
+        "@babel/preset-env": "7.24.6"
+    }
+}
