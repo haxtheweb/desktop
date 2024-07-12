@@ -19,7 +19,7 @@ const routes = [
 routes.forEach(({ path, viewName, title }) => {
   router.get(path, (_req, res) => res.render(viewName, { title }));
 });
-const expressPort = process.env.PORT || 8080;
+const expressPort = process.env.PORT || 3000;
 
 app.set("port", expressPort);
 app.set("views", path.join(__dirname, "..", "views"));

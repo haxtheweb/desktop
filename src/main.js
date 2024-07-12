@@ -5,7 +5,7 @@ import path from "path";
 import fetch from "node-fetch";
 import "./haxcms-nodejs.server.js";
 
-const expressPort = process.env.PORT || 8080;
+const expressPort = process.env.PORT || 3000;
 const expressAppUrl = `http://127.0.0.1:${expressPort}`;
 let mainWindow;
 
