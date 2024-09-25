@@ -26,12 +26,19 @@
         "start": "npm run build && electron .",
         "build": "babel src --out-dir dist/src --copy-files --include-dotfiles",
         "release": "npm run build && commit-and-tag-version && git push --follow-tags origin main && npm publish",
-        "pack-deb64": "npm run build && cd .. && npx @electron/packager ./desktop/ haxtheweb-desktop --executable-name=haxtheweb-desktop --out=./desktop/builds --icon=./desktop/dist/src/favicon.ico --ignore=\"^(?!(.*node_modules|.*dist))(.*src.*|.*screenshots.*|.*tsconfig.*|.*_sites.*|.*_published.*|.*_archived.*|.*builds.*|.*README.*|.*git.*)\" --overwrite && cd desktop && npm run fixbuildissue-deb64",
-        "pack-win32": "npm run build && cd .. && npx @electron/packager ./desktop/ haxtheweb-desktop --executable-name=haxtheweb-desktop --out=./desktop/builds --platform win32 --arch x64 --icon=./desktop/dist/src/favicon.ico --ignore=\"^(?!(.*node_modules|.*dist))(.*src.*|.*screenshots.*|.*tsconfig.*|.*_sites.*|.*_published.*|.*_archived.*|.*builds.*|.*README.*|.*git.*)\" --overwrite && cd desktop && npm run fixbuildissue-win32",
-        "fixbuildissue-deb64": "rm -rf builds/haxtheweb-desktop-linux-x64/resources/app/node_modules/@haxtheweb/haxcms-nodejs/dist/public/build && cp -R node_modules/@haxtheweb/haxcms-nodejs/dist/public/build builds/haxtheweb-desktop-linux-x64/resources/app/node_modules/@haxtheweb/haxcms-nodejs/dist/public/build",
-        "fixbuildissue-win32": "rm -rf builds/haxtheweb-desktop-win32-x64/resources/app/node_modules/@haxtheweb/haxcms-nodejs/dist/public/build && cp -R node_modules/@haxtheweb/haxcms-nodejs/dist/public/build builds/haxtheweb-desktop-win32-x64/resources/app/node_modules/@haxtheweb/haxcms-nodejs/dist/public/build",
+        "linux" : "npm run deb64",
         "deb64": "npm run pack-deb64 && electron-installer-debian --src ./builds/haxtheweb-desktop-linux-x64/ --dest ./builds/installers/ --arch amd64",
-        "win32": "npm run pack-win32 && electron-installer-windows --src ./builds/haxtheweb-desktop-win32-x64/ --dest ./builds/installers/"
+        "pack-deb64": "npm run build && cd .. && npx @electron/packager ./desktop/ haxtheweb-desktop --executable-name=haxtheweb-desktop --out=./desktop/builds --icon=./desktop/dist/src/favicon.ico --ignore=\"^(?!(.*node_modules|.*dist))(.*src.*|.*screenshots.*|.*tsconfig.*|.*_sites.*|.*_published.*|.*_archived.*|.*builds.*|.*README.*|.*git.*)\" --overwrite && cd desktop && npm run fixbuildissue-deb64",
+        "fixbuildissue-deb64": "rm -rf builds/haxtheweb-desktop-linux-x64/resources/app/node_modules/@haxtheweb/haxcms-nodejs/dist/public/build && cp -R node_modules/@haxtheweb/haxcms-nodejs/dist/public/build builds/haxtheweb-desktop-linux-x64/resources/app/node_modules/@haxtheweb/haxcms-nodejs/dist/public/build",
+        "windows" : "npm run win32",
+        "win32": "npm run pack-win32 && electron-installer-windows --src ./builds/haxtheweb-desktop-win32-x64/ --dest ./builds/installers/",
+        "pack-win32": "npm run build && cd .. && npx @electron/packager ./desktop/ haxtheweb-desktop --executable-name=haxtheweb-desktop --out=./desktop/builds --platform win32 --arch x64 --icon=./desktop/dist/src/favicon.ico --ignore=\"^(?!(.*node_modules|.*dist))(.*src.*|.*screenshots.*|.*tsconfig.*|.*_sites.*|.*_published.*|.*_archived.*|.*builds.*|.*README.*|.*git.*)\" --overwrite && cd desktop && npm run fixbuildissue-win32",
+        "fixbuildissue-win32": "rm -rf builds/haxtheweb-desktop-win32-x64/resources/app/node_modules/@haxtheweb/haxcms-nodejs/dist/public/build && cp -R node_modules/@haxtheweb/haxcms-nodejs/dist/public/build builds/haxtheweb-desktop-win32-x64/resources/app/node_modules/@haxtheweb/haxcms-nodejs/dist/public/build",
+        "osx" : "npm run darwin",
+        "mac" : "npm run darwin",
+        "darwin": "npm run pack-darwin && electron-installer-dmg ./builds/haxtheweb-desktop-darwin-x64/haxtheweb-desktop.app haxtheweb-desktop",
+        "pack-darwin": "npm run build && cd .. && npx @electron/packager ./desktop/ haxtheweb-desktop --executable-name=haxtheweb-desktop --out=./desktop/builds  --platform darwin --arch x64 --icon=./desktop/dist/src/favicon.ico --ignore=\"^(?!(.*node_modules|.*dist))(.*src.*|.*screenshots.*|.*tsconfig.*|.*_sites.*|.*_published.*|.*_archived.*|.*builds.*|.*README.*|.*git.*)\" --overwrite && cd desktop && npm run fixbuildissue-darwin",
+        "fixbuildissue-darwin": "rm -rf builds/haxtheweb-desktop-darwin-x64/haxtheweb-desktop.app/Contents/Resources/app/node_modules/@haxtheweb/haxcms-nodejs/dist/public/build && cp -R node_modules/@haxtheweb/haxcms-nodejs/dist/public/build builds/haxtheweb-desktop-darwin-x64/haxtheweb-desktop.app/Contents/Resources/app/node_modules/@haxtheweb/haxcms-nodejs/dist/public/build"
     },
     "dependencies": {
         "@electron/remote": "2.1.2",
@@ -71,6 +78,7 @@
         "commit-and-tag-version": "12.4.1",
         "electron": "^31.1.0",
         "electron-installer-debian": "3.2.0",
+        "electron-installer-dmg": "5.0.1",
         "electron-installer-windows": "3.0.0"
     }
 }
