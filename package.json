@@ -1,7 +1,7 @@
 {
     "name": "haxtheweb-desktop",
     "description": "HAX Electron app to run haxcms-nodejs via desktop app launcher",
-    "version": "10.0.1",
+    "version": "10.0.2",
     "main": "./dist/src/main.js",
     "icon": "./dist/favicon.ico",
     "basePath": "./dist",
