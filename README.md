@@ -1,5 +1,5 @@
 # HAX The Desktop
-HAX The Desktop runs haxcms-nodejs and it's express based engine wrapped in electron.
+HAX The Desktop runs haxcms-nodejs and its express based engine wrapped in electron.
 
 ![HAXcms nodejs backend](screenshots/haxcms-nodejs.png)
 
