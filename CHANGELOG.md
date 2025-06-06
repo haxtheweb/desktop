@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file. See [commit
 
 ## [11.0.0](https://github.com/haxtheweb/desktop/compare/v10.0.2...v11.0.0) (2025-06-06)
 
+## [11.0.0](https://github.com/haxtheweb/desktop/compare/v10.0.2...v11.0.0) (2025-06-06)
+
 ## [10.0.2](https://github.com/haxtheweb/desktop/compare/v10.0.1...v10.0.2) (2025-01-31)
 
 ## [10.0.1](https://github.com/haxtheweb/desktop/compare/v9.0.6...v10.0.1) (2024-12-23)
