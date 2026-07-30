@@ -1,4 +1,4 @@
-import { app, globalShortcut, BrowserWindow, ipcMain, nativeTheme, utilityProcess } from "electron";
+import { app, globalShortcut, BrowserWindow, ipcMain, nativeTheme, utilityProcess, Menu } from "electron";
 import * as remoteMain from '@electron/remote/main';
 remoteMain.initialize();
 import path from "path";
@@ -83,12 +83,45 @@ function createWindow() {
   mainWindow.loadURL(`file://${__dirname}/../index.html`);
 }
 
+function openLegalNotices() {
+  const legalWin = new BrowserWindow({
+    width: 980,
+    height: 720,
+    title: "Legal Notices",
+    autoHideMenuBar: true,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+  legalWin.loadURL(`file://${path.join(__dirname, "legal-notices", "legal-notices.html")}`);
+}
+
+function buildMenu() {
+  const isMac = process.platform === "darwin";
+  const template = [
+    ...(isMac ? [{ role: "appMenu" }] : []),
+    { role: "fileMenu" },
+    { role: "editMenu" },
+    { role: "viewMenu" },
+    { role: "windowMenu" },
+    {
+      label: "Help",
+      submenu: [
+        { label: "Legal Notices", click: () => openLegalNotices() }
+      ]
+    }
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
 app.whenReady().then(() => {
   registerGlobalShortcuts();
+  buildMenu();
   createWindow();
 
   app.on("activate", () => {

@@ -1,0 +1,92 @@
+================================================================================
+WRITTEN OFFER FOR SOURCE CODE — LGPL-3.0 AND MPL-2.0 COMPONENTS
+================================================================================
+
+haxtheweb-desktop is distributed in binary form (Electron desktop application)
+and bundles a prebuilt copy of libvips and its dependencies as a separate,
+replaceable shared library (libvips-cpp.so.42 on Linux, the equivalent .dll on
+Windows, and .dylib on macOS). These prebuilt libraries are provided by the
+npm package `@img/sharp-libvips-*` (version 1.0.4) and are loaded at runtime by
+the `sharp` (Apache-2.0) native addon.
+
+Some of the libraries compiled into this prebuilt binary are licensed under the
+GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later) and one
+(cairo) is licensed under the Mozilla Public License v2.0 (MPL-2.0). The full
+license texts are provided alongside this notice as `lgpl-3.0.txt` and
+`mpl-2.0.txt`, and the complete third-party notices for the sharp-libvips
+binary are in `third-party-notices-libvips.md`.
+
+The LGPLv3-licensed components bundled in this build (with versions, as
+published by `@img/sharp-libvips-*` v1.0.4 / sharp v0.32.6) are:
+
+  - libvips      8.15.3   https://github.com/libvips/libvips
+  - glib         2.81.1   https://gitlab.gnome.org/GNOME/glib
+  - fribidi      1.0.15   https://github.com/fribidi/fribidi
+  - pango        1.54.0   https://gitlab.gnome.org/GNOME/pango
+  - librsvg      2.58.93  https://gitlab.gnome.org/GNOME/librsvg
+  - libexif      0.6.24   https://github.com/libexif/libexif
+  - libheif      1.18.2   https://github.com/nickyoung-c/libheif
+  - proxy-libintl 0.4     https://github.com/jhurliman/proxy-libintl
+
+The MPL-2.0-licensed component bundled in this build is:
+
+  - cairo        1.18.0   https://gitlab.freedesktop.org/cairo/cairo
+
+--------------------------------------------------------------------------------
+LGPL-3.0 section 6 — written offer for source code
+--------------------------------------------------------------------------------
+
+Pursuant to section 6 of the GNU Lesser General Public License v3.0, you have
+the right to receive the complete corresponding source code for the
+LGPLv3-licensed libraries listed above, in a form suitable for recompiling
+them into equivalent shared libraries, for a period of at least three years
+from the date this software was distributed to you.
+
+To obtain that source code, contact the maintainer of haxtheweb-desktop and
+request the source for the sharp-libvips LGPL components, or obtain it directly
+from the upstream project repositories linked above and from the build scripts
+published by the sharp-libvips project at:
+
+    https://github.com/lovell/sharp-libvips
+
+(The `build/` scripts and `versions.properties` in that repository build each
+of the libraries above from its upstream source at the pinned versions listed
+here.)
+
+Alternatively, the prebuilt binary you received already consists of these
+libraries as a separate, identifiable, replaceable shared library file. You may
+therefore exercise your LGPL rights by replacing that file with a functionally
+equivalent shared library you build yourself (see "Relink notice" below).
+
+--------------------------------------------------------------------------------
+MPL-2.0 section 3.6 — source availability
+--------------------------------------------------------------------------------
+
+The MPL-2.0-licensed component (cairo) is available in source form from its
+upstream repository linked above at the pinned version (1.18.0). Under MPL-2.0,
+the source for any MPL-licensed files you modify must be made available under
+MPL-2.0; you may combine MPL-licensed files with files under other licenses
+(including this application's Apache-2.0 license) in a larger work.
+
+--------------------------------------------------------------------------------
+Relink notice (LGPL-3.0 — "work that uses the Library")
+--------------------------------------------------------------------------------
+
+The libvips shared library is dynamically linked by the `sharp` addon at
+runtime; it is a separate, identifiable, and user-replaceable file. You may
+modify the library and relink it against a modified version of
+`libvips-cpp.so.42` / the equivalent .dll / .dylib without modifying
+haxtheweb-desktop itself. To do so:
+
+  1. Obtain the libvips source (see the LGPL-3.0 section above).
+  2. Build your modified `libvips-cpp` shared library.
+  3. Replace the file at the following location inside the application bundle:
+       - Linux:   <app>/resources/app/node_modules/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.42
+       - Windows: <app>\resources\app\node_modules\@img\sharp-libvips-win32-x64\lib\win32-x64\libvips-cpp.dll
+       - macOS:   <app>.app/Contents/Resources/app/node_modules/@img/sharp-libvips-darwin-x64/lib/libvips-cpp.dylib
+  4. Relaunch the application.
+
+The application's own source code (Apache-2.0) is available at:
+    https://github.com/haxtheweb/desktop
+
+================================================================================
