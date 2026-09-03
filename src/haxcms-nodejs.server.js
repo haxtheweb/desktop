@@ -21,6 +21,10 @@ const { HAXCMS, systemStructureContext } = require('@haxtheweb/haxcms-nodejs/dis
 HAXCMS.HAXCMS_DISABLE_JWT_CHECKS = true;
 // routes with all requires
 const { RoutesMap, OpenRoutes } = require('@haxtheweb/haxcms-nodejs/dist/lib/RoutesMap.js');
+// Shared CLI theme so desktop's launcher prints the same unified "server is up"
+// banner as haxcms-nodejs instead of its own drifted bare line (issue
+// haxtheweb/issues#2973).
+const cliTheme = require('@haxtheweb/haxcms-nodejs/dist/lib/cliTheme.js');
 // app settings
 const multer = require('multer')
 const upload = multer({ dest: path.join(HAXCMS.configDirectory, 'tmp/') })
@@ -298,8 +302,7 @@ server.listen(port, async (err) => {
   if (err) {
     throw err;
   }
-  /* eslint-disable no-console */
-  console.log(`open: http://localhost:${port}`);  
+  cliTheme.printServerBanner({ url: `http://localhost:${port}` });
 });
 
 
