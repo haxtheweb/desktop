@@ -1,86 +1,121 @@
-import { app, globalShortcut, BrowserWindow, ipcMain, nativeTheme, utilityProcess, Menu } from "electron";
-import * as remoteMain from '@electron/remote/main';
-remoteMain.initialize();
+import { app, BrowserWindow, Menu, dialog, session, shell } from "electron";
 import path from "path";
-import fetch from "node-fetch";
-import "./haxcms-nodejs.server.js";
 
-const expressPort = process.env.PORT || 3000;
-const expressAppUrl = `http://127.0.0.1:${expressPort}`;
-let mainWindow;
+// One copy of the app at a time: a second launch would start a second server
+// on the next port and point a second window at the same sites folder.
+const isPrimaryInstance = app.requestSingleInstanceLock();
 
-function stripAnsiColors(text) {
-  return text.replace(
-    /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
-    ""
-  );
+let haxcms = null;
+let serverStartError = null;
+if (isPrimaryInstance) {
+  try {
+    haxcms = require("./haxcms-nodejs.server.js");
+  } catch (e) {
+    serverStartError = e;
+  }
+} else {
+  app.quit();
 }
 
-function redirectOutput(stream) {
-  stream.on("data", (data) => {
-    console.log(data);
-    if (!mainWindow) return;
-    data.toString().split("\n").forEach((line) => {
-      if (line !== "") {
-        mainWindow.webContents.send("server-log-entry", stripAnsiColors(line));
-      }
-    });
+let mainWindow = null;
+let serverOrigin = "";
+
+// The only web content this app trusts is the local HAXcms server.
+function isServerUrl(target) {
+  if (serverOrigin === "") {
+    return false;
+  }
+  try {
+    return new URL(target).origin === serverOrigin;
+  } catch (e) {
+    return false;
+  }
+}
+
+function openExternally(target) {
+  try {
+    const parsed = new URL(target);
+    if (parsed.protocol === "https:" || parsed.protocol === "http:" || parsed.protocol === "mailto:") {
+      shell.openExternal(parsed.toString());
+    }
+  } catch (e) {
+    // not a URL; ignore
+  }
+}
+
+const secureWebPreferences = {
+  contextIsolation: true,
+  nodeIntegration: false,
+  nodeIntegrationInSubFrames: false,
+  sandbox: true,
+  webSecurity: true,
+  allowRunningInsecureContent: false,
+  webviewTag: false,
+  spellcheck: true,
+};
+
+// Applied to every webContents, including windows the page opens.
+app.on("web-contents-created", (_event, contents) => {
+  contents.on("will-navigate", (event, target) => {
+    if (!isServerUrl(target)) {
+      event.preventDefault();
+      openExternally(target);
+    }
   });
-}
-
-function registerGlobalShortcuts() {
-  globalShortcut.register("CommandOrControl+Shift+L", () => {
-    mainWindow.webContents.send("show-server-log");
+  contents.on("will-redirect", (event, target) => {
+    if (!isServerUrl(target)) {
+      event.preventDefault();
+    }
   });
-}
+  contents.on("will-attach-webview", (event) => {
+    event.preventDefault();
+  });
+  contents.setWindowOpenHandler(({ url }) => {
+    // HAX opens site previews and published copies in new windows
+    if (isServerUrl(url)) {
+      return {
+        action: "allow",
+        overrideBrowserWindowOptions: {
+          autoHideMenuBar: true,
+          webPreferences: secureWebPreferences,
+        },
+      };
+    }
+    openExternally(url);
+    return { action: "deny" };
+  });
+});
 
-function unregisterAllShortcuts() {
-  globalShortcut.unregisterAll();
+function lockDownSession() {
+  const ses = session.defaultSession;
+  // Only the local server gets anything beyond the basics; the rest is denied.
+  const allowed = ["clipboard-sanitized-write", "fullscreen"];
+  ses.setPermissionRequestHandler((webContents, permission, callback) => {
+    callback(isServerUrl(webContents.getURL()) && allowed.indexOf(permission) !== -1);
+  });
+  ses.setPermissionCheckHandler((webContents, permission) => {
+    return !!webContents && isServerUrl(webContents.getURL()) && allowed.indexOf(permission) !== -1;
+  });
 }
 
 function createWindow() {
   mainWindow = new BrowserWindow({
     autoHideMenuBar: true,
-    width: 1080,
-    height: 600,
+    width: 1280,
+    height: 800,
+    show: false,
     icon: path.join(__dirname, "favicon.ico"),
-    webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
-      plugins: true,
-      nodeIntegration: true,
-      contextIsolation: true,
-      backgroundThrottling: false,
-      nativeWindowOpen: false,
-      webSecurity: false
-    },
+    webPreferences: secureWebPreferences,
   });
-  remoteMain.enable(mainWindow.webContents);
-
-  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-    callback({ responseHeaders: Object.fromEntries(Object.entries(details.responseHeaders).filter(header => !/x-frame-options/i.test(header[0]))) });
-  });
-
+  mainWindow.once("ready-to-show", () => mainWindow.show());
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
-
-  mainWindow.on("focus", registerGlobalShortcuts);
-  mainWindow.on("blur", unregisterAllShortcuts);
-
-  ipcMain.handle("get-express-app-url", () => expressAppUrl);
-  ipcMain.handle('dark-mode:toggle', () => {
-    if (nativeTheme.shouldUseDarkColors) {
-      nativeTheme.themeSource = 'light'
-    } else {
-      nativeTheme.themeSource = 'dark'
-    }
-    return nativeTheme.shouldUseDarkColors
-  })
-
-  ipcMain.handle('dark-mode:system', () => {
-    nativeTheme.themeSource = 'system'
-  })
-  mainWindow.loadURL(`file://${__dirname}/../index.html`);
+  // static spinner (no script) while the server starts
+  mainWindow.loadFile(path.join(__dirname, "..", "index.html"));
+  if (serverOrigin !== "") {
+    mainWindow.loadURL(serverOrigin);
+  }
 }
 
 function openLegalNotices() {
@@ -89,12 +124,9 @@ function openLegalNotices() {
     height: 720,
     title: "Legal Notices",
     autoHideMenuBar: true,
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false
-    }
+    webPreferences: secureWebPreferences,
   });
-  legalWin.loadURL(`file://${path.join(__dirname, "legal-notices", "legal-notices.html")}`);
+  legalWin.loadFile(path.join(__dirname, "legal-notices", "legal-notices.html"));
 }
 
 function buildMenu() {
@@ -115,28 +147,43 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+app.on("second-instance", () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
+
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-app.whenReady().then(() => {
-  registerGlobalShortcuts();
+app.on("before-quit", () => {
+  if (haxcms && haxcms.server && haxcms.server.listening) {
+    haxcms.server.close();
+  }
+});
+
+app.whenReady().then(async () => {
+  if (!isPrimaryInstance) {
+    return;
+  }
+  if (serverStartError) {
+    dialog.showErrorBox("HAXcms could not start", String(serverStartError.message || serverStartError));
+    app.quit();
+    return;
+  }
+  lockDownSession();
   buildMenu();
   createWindow();
-
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
-  setTimeout(() => {
-    const checkServerRunning = setInterval(() => {
-      fetch(expressAppUrl)
-        .then((response) => {
-          if (response.status === 200) {
-            clearInterval(checkServerRunning);
-            mainWindow.webContents.send("server-running");
-          }
-        })
-        .catch(() => { }); // swallow exception
-    }, 300);
-  }, 100);
+  const port = await haxcms.serverReady;
+  const host = haxcms.getListenHost() || "127.0.0.1";
+  const browserHost = host.indexOf(":") !== -1 ? `[${host}]` : host;
+  serverOrigin = `${haxcms.serverProtocol}://${browserHost}:${port}`;
+  if (mainWindow) {
+    mainWindow.loadURL(serverOrigin);
+  }
 });

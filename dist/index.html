@@ -4,33 +4,35 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title>HAXcms + Electron</title>
+	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'" />
+	<title>HAX The Web</title>
 	<style>
 		body {
-			overflow: hidden;
 			margin: 0;
-			padding: 0;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			height: 100vh;
+			font-family: system-ui, sans-serif;
+			background: #ffffff;
+			color: #262626;
+		}
+
+		@media (prefers-color-scheme: dark) {
+			body {
+				background: #1d1d1d;
+				color: #ffffff;
+			}
 		}
 
 		.loader {
-			border: 12px solid #f3f3f3;
+			border: 12px solid #e4e5e7;
 			border-radius: 50%;
-			border-top: 12px solid blue;
-			border-bottom: 12px solid blue;
+			border-top: 12px solid #1e407c;
+			border-bottom: 12px solid #1e407c;
 			width: 80px;
 			height: 80px;
-			-webkit-animation: spin 2s linear infinite;
 			animation: spin 2s linear infinite;
-		}
-
-		@-webkit-keyframes spin {
-			0% {
-				-webkit-transform: rotate(0deg);
-			}
-
-			100% {
-				-webkit-transform: rotate(360deg);
-			}
 		}
 
 		@keyframes spin {
@@ -43,43 +45,16 @@
 			}
 		}
 
-		#loading {
-			display: flex;
-			justify-content: center;
-			align-items: center;
-			height: 100vh;
-		}
-
-		#serverLog {
-			position: absolute;
-			width: 100%;
-			height: 100%;
-			display: none;
-			overflow: auto;
-		}
-
-		.expressApp {
-			display: flex !important;
-			position: absolute;
-			width: 100%;
-			height: 100%;
-		}
-
-		.expressAppHide {
-			flex: 0 1;
-			width: 0px;
-			height: 0px;
+		@media (prefers-reduced-motion: reduce) {
+			.loader {
+				animation: none;
+			}
 		}
 	</style>
 </head>
 
 <body>
-	<div id="loading">
-		<div class="loader"></div>
-	</div>
-	<div id="serverLog"></div>
-	<iframe id="expressApp" class="expressApp" title="Express App" frameborder="0"></iframe>
-	<script src="./src/app.js"></script>
+	<div class="loader" role="progressbar" aria-label="Starting HAXcms"></div>
 </body>
 
 </html>
