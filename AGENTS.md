@@ -16,7 +16,7 @@ The HAX ecosystem consists of multiple interconnected repositories, each serving
 
 - **`haxcms-nodejs`** - Node.js backend implementation of HAXcms, offering the same capabilities as the PHP version but in a JavaScript environment.
 
-- **`desktop`** - Electron-based desktop application that provides a local development environment for HAX, combining the power of HAXcms with desktop convenience.
+- **`haxcms-desktop`** - Electron-based desktop application that provides a local development environment for HAX, combining the power of HAXcms with desktop convenience.
 
 ### Supporting Repositories
 
@@ -341,7 +341,7 @@ The HAX CLI supports various options for fine-tuned control. Use `hax help`, `ha
 ├── create/                 # HAX CLI tool
 ├── haxcms-php/            # PHP backend
 ├── haxcms-nodejs/         # Node.js backend  
-├── desktop/               # Electron app
+├── haxcms-desktop/        # Electron app
 ├── hax11ty/              # 11ty integration
 ├── json-outline-schema/   # Content schemas
 ├── hax-schema/           # HAX property schemas
