@@ -71,10 +71,18 @@ function connectDevTools(webSocketUrl) {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(webSocketUrl);
     const pending = new Map();
+    const problems = [];
     let nextId = 0;
     socket.addEventListener("message", (event) => {
       const message = JSON.parse(event.data);
       const waiting = pending.get(message.id);
+      // page problems, kept for the failure report
+      if (message.method === "Log.entryAdded" && message.params.entry.level === "error") {
+        problems.push(`${message.params.entry.text} ${message.params.entry.url || ""}`);
+      } else if (message.method === "Runtime.exceptionThrown") {
+        const details = message.params.exceptionDetails;
+        problems.push(`uncaught: ${(details.exception && details.exception.description) || details.text}`);
+      }
       if (waiting) {
         pending.delete(message.id);
         if (message.error) {
@@ -93,6 +101,7 @@ function connectDevTools(webSocketUrl) {
     });
     socket.addEventListener("open", () => {
       const client = {
+        problems: problems,
         send(method, params) {
           return new Promise((res, rej) => {
             const id = ++nextId;
@@ -186,6 +195,8 @@ async function run() {
     );
     const origin = new URL(target.url).origin;
     page = await connectDevTools(target.webSocketDebuggerUrl);
+    await page.send("Log.enable");
+    await page.send("Runtime.enable");
 
     // dashboard: app-hax is served out of the asar archive and upgrades
     await waitFor(
@@ -279,6 +290,22 @@ async function run() {
   } catch (e) {
     console.error("---- app output ----");
     console.error(output.slice(-4000));
+    if (page) {
+      console.error("---- page state ----");
+      const state = await page
+        .evaluate(() => ({
+          url: globalThis.location.href,
+          readyState: document.readyState,
+          visibility: document.visibilityState,
+          scripts: globalThis.performance.getEntriesByType("resource").length,
+          definedAppHax: !!globalThis.customElements.get("app-hax"),
+          body: document.body ? document.body.innerText.slice(0, 300) : "",
+        }))
+        .catch((err) => `unavailable: ${err.message}`);
+      console.error(JSON.stringify(state, null, 2));
+      console.error("---- page errors ----");
+      console.error(page.problems.slice(0, 40).join("\n"));
+    }
     throw e;
   } finally {
     if (page) {
