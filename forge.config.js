@@ -104,6 +104,20 @@ module.exports = {
       config: {},
     },
     {
+      // one file that runs on any distribution without installing
+      name: "@reforged/maker-appimage",
+      platforms: ["linux"],
+      config: {
+        options: {
+          bin: "haxtheweb-desktop",
+          icon: "./src/favicon.png",
+          productName: "HAX The Desktop",
+          genericName: "HAXcms site builder",
+          categories: ["Education", "Development"],
+        },
+      },
+    },
+    {
       name: "@electron-forge/maker-deb",
       platforms: ["linux"],
       config: {

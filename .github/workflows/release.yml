@@ -42,6 +42,17 @@ jobs:
           path: artifacts
       - name: Collect release assets
         run: node scripts/collect-release-assets.js artifacts release "$GITHUB_REF_NAME"
+      # the winget manifest and Homebrew cask for this version, kept on the
+      # run for the first submission to each (docs/RELEASING.md)
+      - name: Write package manager entries
+        run: node scripts/package-manifests.js release package-managers
+      - name: Upload package manager entries
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-managers
+          path: package-managers
+          retention-days: 90
+          if-no-files-found: error
       - name: Draft the release
         env:
           GH_TOKEN: ${{ github.token }}

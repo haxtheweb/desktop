@@ -98,6 +98,10 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
+      # the AppImage maker packs the app with mksquashfs
+      - name: Install AppImage build tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends squashfs-tools
       - name: Install
         run: npm ci --no-audit --no-fund
         env:
@@ -153,6 +157,17 @@ jobs:
           else
             npm run test:app
           fi
+
+      # the AppImage is its own copy of the app: unpack it (runners have no
+      # FUSE) and run the same test against what is inside
+      - name: Test the AppImage
+        if: runner.os == 'Linux'
+        run: |
+          APPIMAGE="$(find out/make -name '*.AppImage' | head -n 1)"
+          test -n "$APPIMAGE"
+          chmod +x "$APPIMAGE"
+          (cd "$RUNNER_TEMP" && "$GITHUB_WORKSPACE/$APPIMAGE" --appimage-extract > /dev/null)
+          HAX_DESKTOP_EXECUTABLE="$RUNNER_TEMP/squashfs-root/usr/lib/haxtheweb-desktop/haxtheweb-desktop" xvfb-run -a npm run test:app
 
       - name: Verify the macOS signature and notarization
         if: runner.os == 'macOS' && env.HAS_APPLE_CERTIFICATE == 'true'
