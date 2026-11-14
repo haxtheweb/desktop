@@ -1,0 +1,56 @@
+# A version tag (vX.Y.Z, from `npm run release`) builds every platform against
+# the haxcms-nodejs release in package-lock.json, signs what it has secrets
+# for, and drafts a GitHub release with the installers attached. A person
+# reviews the draft and publishes it. See docs/RELEASING.md.
+# https://github.com/haxtheweb/issues/issues/3343
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: read
+jobs:
+  package:
+    uses: ./.github/workflows/package.yml
+    with:
+      haxcms-nodejs: locked
+      sign: true
+    secrets:
+      APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+  draft-release:
+    name: draft GitHub release
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Download installers
+        uses: actions/download-artifact@v4
+        with:
+          pattern: haxtheweb-desktop-*
+          path: artifacts
+      - name: Collect release assets
+        run: node scripts/collect-release-assets.js artifacts release "$GITHUB_REF_NAME"
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAC_SIGNED: ${{ secrets.APPLE_SIGNING_IDENTITY != '' && secrets.APPLE_ID != '' }}
+        run: |
+          # unsigned macOS builds are blocked by Gatekeeper: not a real release yet
+          if [ "$MAC_SIGNED" = "true" ]; then
+            gh release create "$GITHUB_REF_NAME" release/* --repo "$GITHUB_REPOSITORY" --verify-tag --draft --generate-notes --title "$GITHUB_REF_NAME"
+          else
+            gh release create "$GITHUB_REF_NAME" release/* --repo "$GITHUB_REPOSITORY" --verify-tag --draft --prerelease --generate-notes --title "$GITHUB_REF_NAME (unsigned)" \
+              --notes "These builds are not code-signed. macOS will refuse to open the app and Windows will show a SmartScreen warning."
+          fi

@@ -6,47 +6,15 @@ on:
     branches: [master]
 permissions:
   contents: read
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  build-and-test:
-    name: "${{ matrix.platform }}: node.js ${{ matrix.node-version }}"
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: [ubuntu-latest]
-        node-version: [24]
-    runs-on: ${{ matrix.platform }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      # The desktop app is tested against haxcms-nodejs main, not the last
-      # npm release, so it tracks the capability being worked on upstream.
-      - name: Checkout haxcms-nodejs main
-        uses: actions/checkout@v4
-        with:
-          repository: haxtheweb/haxcms-nodejs
-          ref: main
-          path: haxcms-nodejs-main
-          persist-credentials: false
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - name: Install
-        run: npm ci --no-audit --no-fund
-        env:
-          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
-      - name: Build haxcms-nodejs main
-        working-directory: haxcms-nodejs-main
-        run: |
-          yarn install --frozen-lockfile --ignore-scripts
-          npm run build
-      - name: Use haxcms-nodejs main
-        run: |
-          rm -rf node_modules/@haxtheweb/haxcms-nodejs
-          ln -s "$GITHUB_WORKSPACE/haxcms-nodejs-main" node_modules/@haxtheweb/haxcms-nodejs
-      - name: Build and smoke test
-        run: npm test
+  # Every platform: package, build the installers (kept as artifacts on the
+  # run so they can be tried on a real machine) and test the packaged app.
+  # Never signed: pull request code doesn't get near the signing secrets.
+  package:
+    uses: ./.github/workflows/package.yml
+    with:
+      haxcms-nodejs: main
+      sign: false

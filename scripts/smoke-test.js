@@ -75,7 +75,14 @@ run()
   })
   .finally(() => {
     shim.server.close();
-    fs.rmSync(home, { recursive: true, force: true });
+    // the shim runs from the home directory; Windows won't remove a folder
+    // that is the working directory or still has files open in it
+    process.chdir(os.tmpdir());
+    try {
+      fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    } catch (e) {
+      console.warn(`could not remove ${home}: ${e.code || e.message}`);
+    }
     // haxcms-nodejs keeps timers (upload sweeper, rate limiters) alive
     setTimeout(() => process.exit(process.exitCode || 0), 200).unref();
   });

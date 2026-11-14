@@ -27,11 +27,32 @@ npm start
 
 ## How to package for distribution
 
+Packaging uses [Electron Forge](https://www.electronforge.io/) (`forge.config.js`). Each installer is built on its own operating system:
+
 ```bash
-npm run linux        # .deb (x64)
-npm run windows      # installer (x64)
-npm run mac          # .dmg (x64)
-npm run darwin-arm64 # .dmg (Apple silicon)
+npm run package   # the packaged app, in out/
+npm run make      # installers for the OS you are on, in out/make/
 ```
 
-Packaged builds have Electron fuses flipped (`scripts/flip-fuses.mjs`) so the binary can't be run as plain Node or opened with `--inspect`.
+| Built on | Installers |
+| --- | --- |
+| Linux | `.deb`, `.zip` |
+| Windows | Squirrel `Setup.exe` |
+| macOS (Apple silicon and Intel) | `.dmg`, `.zip` |
+
+The app ships as an asar archive with Electron fuses set, so the binary can't be run as plain Node, opened with `--inspect`, or pointed at different app code.
+
+## Testing the packaged app
+
+```bash
+npm run package
+npm run test:app   # Linux without a display: xvfb-run -a npm run test:app
+```
+
+`test/packaged-app.test.js` launches the packaged binary and checks the fuses, that the dashboard loads, that a site can be created and opened, that the page can't leave the local server, and that quitting stops the server.
+
+CI (`.github/workflows/build.yml`) does this on Linux, Windows and both macOS architectures for every pull request, against haxcms-nodejs `main`. The installers from each run are attached to it as artifacts, so a change can be tried on a real machine before it is released.
+
+## Releasing
+
+See [docs/RELEASING.md](docs/RELEASING.md) for cutting a release and setting up code signing.
