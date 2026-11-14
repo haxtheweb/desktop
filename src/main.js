@@ -109,7 +109,8 @@ function createWindow() {
     width: 1280,
     height: 800,
     show: false,
-    icon: path.join(__dirname, "favicon.ico"),
+    // window / taskbar icon; macOS takes its icon from the app bundle
+    icon: path.join(__dirname, process.platform === "win32" ? "favicon.ico" : "favicon.png"),
     webPreferences: secureWebPreferences,
   });
   mainWindow.once("ready-to-show", () => mainWindow.show());
