@@ -1,0 +1,170 @@
+# Packages the app on every platform, builds the installers, and tests the
+# packaged app itself. Called by build.yml (pull requests, master) and
+# release.yml (version tags).
+# https://github.com/haxtheweb/issues/issues/3343
+name: package
+on:
+  workflow_call:
+    inputs:
+      haxcms-nodejs:
+        description: "'main' tests against haxcms-nodejs main; 'locked' uses the release in package-lock.json"
+        type: string
+        default: main
+      sign:
+        description: "Sign and notarize when the signing secrets exist"
+        type: boolean
+        default: false
+    secrets:
+      APPLE_CERTIFICATE_P12:
+        required: false
+      APPLE_CERTIFICATE_PASSWORD:
+        required: false
+      APPLE_SIGNING_IDENTITY:
+        required: false
+      APPLE_ID:
+        required: false
+      APPLE_APP_SPECIFIC_PASSWORD:
+        required: false
+      APPLE_TEAM_ID:
+        required: false
+permissions:
+  contents: read
+jobs:
+  # haxcms-nodejs main is built once, on Linux, and handed to every platform
+  # as the same tarball npm would publish.
+  haxcms-nodejs-main:
+    name: build haxcms-nodejs main
+    if: inputs.haxcms-nodejs == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout haxcms-nodejs main
+        uses: actions/checkout@v4
+        with:
+          repository: haxtheweb/haxcms-nodejs
+          ref: main
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Build and pack
+        run: |
+          yarn install --frozen-lockfile --ignore-scripts
+          npm run build
+          mkdir pack
+          npm pack --pack-destination pack
+      - name: Upload tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: haxcms-nodejs-main
+          path: pack/*.tgz
+          retention-days: 1
+          if-no-files-found: error
+
+  package:
+    name: "${{ matrix.name }}"
+    needs: haxcms-nodejs-main
+    # runs when the haxcms-nodejs-main job was skipped ('locked') too
+    if: ${{ !cancelled() && (needs.haxcms-nodejs-main.result == 'success' || needs.haxcms-nodejs-main.result == 'skipped') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x64
+            os: ubuntu-latest
+          - name: windows-x64
+            os: windows-latest
+          - name: macos-arm64
+            os: macos-latest
+          - name: macos-x64
+            os: macos-15-intel
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    env:
+      # step conditions can't read secrets, only whether they exist
+      HAS_APPLE_CERTIFICATE: ${{ inputs.sign && secrets.APPLE_CERTIFICATE_P12 != '' && secrets.APPLE_SIGNING_IDENTITY != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install
+        run: npm ci --no-audit --no-fund
+        env:
+          # Forge downloads the Electron it packages; the dev copy isn't used
+          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+      - name: Download haxcms-nodejs main
+        if: inputs.haxcms-nodejs == 'main'
+        uses: actions/download-artifact@v4
+        with:
+          name: haxcms-nodejs-main
+          path: haxcms-nodejs-main
+      # The desktop app is tested against haxcms-nodejs main, not the last
+      # npm release, so it tracks the capability being worked on upstream.
+      - name: Use haxcms-nodejs main
+        if: inputs.haxcms-nodejs == 'main'
+        run: npm install --no-save --no-audit --no-fund ./haxcms-nodejs-main/*.tgz
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+      - name: Server smoke test
+        run: npm test
+
+      - name: Import Apple signing certificate
+        if: runner.os == 'macOS' && env.HAS_APPLE_CERTIFICATE == 'true'
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+          echo "$APPLE_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/certificate.p12" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychain -d user -s "$KEYCHAIN"
+          rm "$RUNNER_TEMP/certificate.p12"
+
+      # forge.config.js signs and notarizes only when these are set, so pull
+      # requests (sign: false) and repos without the secrets build unsigned.
+      - name: Package and make installers
+        run: npm run make
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ inputs.sign && runner.os == 'macOS' && secrets.APPLE_SIGNING_IDENTITY || '' }}
+          APPLE_ID: ${{ inputs.sign && runner.os == 'macOS' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ inputs.sign && runner.os == 'macOS' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ inputs.sign && runner.os == 'macOS' && secrets.APPLE_TEAM_ID || '' }}
+
+      - name: Test the packaged app
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            xvfb-run -a npm run test:app
+          else
+            npm run test:app
+          fi
+
+      - name: Verify the macOS signature and notarization
+        if: runner.os == 'macOS' && env.HAS_APPLE_CERTIFICATE == 'true'
+        run: |
+          APP="$(find out -maxdepth 2 -name '*.app' | head -n 1)"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          spctl --assess --type execute --verbose=2 "$APP"
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: haxtheweb-desktop-${{ matrix.name }}
+          path: out/make
+          retention-days: 14
+          if-no-files-found: error

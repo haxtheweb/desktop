@@ -1,9 +1,14 @@
 import { app, BrowserWindow, Menu, dialog, session, shell } from "electron";
 import path from "path";
 
+// The Windows installer launches the app with a --squirrel-* flag on install,
+// update and uninstall so it can manage its shortcuts. electron-squirrel-startup
+// does that and quits; the server and window must not start for those runs.
+const handlingInstallerEvent = process.platform === "win32" && require("electron-squirrel-startup");
+
 // One copy of the app at a time: a second launch would start a second server
 // on the next port and point a second window at the same sites folder.
-const isPrimaryInstance = app.requestSingleInstanceLock();
+const isPrimaryInstance = !handlingInstallerEvent && app.requestSingleInstanceLock();
 
 let haxcms = null;
 let serverStartError = null;
@@ -13,7 +18,7 @@ if (isPrimaryInstance) {
   } catch (e) {
     serverStartError = e;
   }
-} else {
+} else if (!handlingInstallerEvent) {
   app.quit();
 }
 

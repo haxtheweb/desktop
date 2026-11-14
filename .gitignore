@@ -3,3 +3,4 @@ dist/src/
 dist/package.json
 builds/
 .haxcmsconfig/
+out/
