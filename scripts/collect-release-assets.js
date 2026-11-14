@@ -23,7 +23,7 @@ if (tag !== "" && tag !== `v${version}`) {
 
 // one installer of each kind is expected from every platform
 const expected = {
-  "linux-x64": [".deb", ".zip"],
+  "linux-x64": [".deb", ".zip", ".appimage"],
   "windows-x64": [".exe"],
   "macos-arm64": [".dmg", ".zip"],
   "macos-x64": [".dmg", ".zip"],
@@ -54,7 +54,7 @@ for (const platform of Object.keys(expected)) {
       failed = true;
       continue;
     }
-    const suffix = ext === ".exe" ? "-setup.exe" : ext;
+    const suffix = ext === ".exe" ? "-setup.exe" : ext === ".appimage" ? ".AppImage" : ext;
     const name = `haxtheweb-desktop-${platform}${suffix}`;
     fs.copyFileSync(matches[0], path.join(outDir, name));
     console.log(`${name}  <-  ${path.relative(artifactsDir, matches[0])}`);

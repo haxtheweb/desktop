@@ -1,0 +1,40 @@
+# When a release is published (not a pre-release), tell the package managers
+# about it. Each job is off until its repository variable is set, because each
+# needs a first submission made by a person. See docs/RELEASING.md, "Package
+# managers".
+# https://github.com/haxtheweb/issues/issues/3343
+name: publish packages
+on:
+  release:
+    types: [released]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish, for example v26.1.0"
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  # winget: opens a pull request on microsoft/winget-pkgs with the new
+  # version. Needs the package to exist there already (the first version is
+  # submitted by hand from the generated manifest).
+  winget:
+    name: winget
+    if: vars.WINGET_PACKAGE_ID != ''
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      PACKAGE_ID: ${{ vars.WINGET_PACKAGE_ID }}
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+    steps:
+      - name: Submit the new version
+        shell: pwsh
+        run: |
+          if ($env:TAG -notmatch '^v\d+\.\d+\.\d+$') { throw "unexpected tag: $env:TAG" }
+          if (-not $env:WINGET_TOKEN) { throw "the WINGET_TOKEN secret is not set" }
+          $version = $env:TAG.Substring(1)
+          $url = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$env:TAG/haxtheweb-desktop-windows-x64-setup.exe"
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          .\wingetcreate.exe update $env:PACKAGE_ID --version $version --urls $url --submit --token $env:WINGET_TOKEN

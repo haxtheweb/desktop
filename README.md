@@ -36,7 +36,7 @@ npm run make      # installers for the OS you are on, in out/make/
 
 | Built on | Installers |
 | --- | --- |
-| Linux | `.deb`, `.zip` |
+| Linux | `.deb`, `.AppImage`, `.zip` (the AppImage needs `mksquashfs`: `sudo apt-get install squashfs-tools`) |
 | Windows | Squirrel `Setup.exe` |
 | macOS (Apple silicon and Intel) | `.dmg`, `.zip` |
 
