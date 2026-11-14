@@ -163,6 +163,11 @@ async function run() {
     // CI runners and containers don't allow Chromium's namespace sandbox
     args.push("--no-sandbox");
   }
+  if (process.platform === "darwin") {
+    // Cookie encryption keeps its key in the login keychain. With a throwaway
+    // home directory there isn't one, and macOS would wait on a prompt.
+    args.push("--use-mock-keychain");
+  }
   const child = spawn(executable, args, {
     env: Object.assign({}, process.env, {
       HOME: home,
@@ -303,6 +308,11 @@ async function run() {
         }))
         .catch((err) => `unavailable: ${err.message}`);
       console.error(JSON.stringify(state, null, 2));
+      const targets = await fetch(`http://127.0.0.1:${debugPort}/json/list`)
+        .then((res) => res.json())
+        .then((list) => list.map((t) => `${t.type} ${t.url}`))
+        .catch((err) => [`unavailable: ${err.message}`]);
+      console.error(`windows: ${targets.join(", ")}`);
       console.error("---- page errors ----");
       console.error(page.problems.slice(0, 40).join("\n"));
     }
