@@ -1,5 +1,6 @@
 // Launches the packaged app (the thing people download, not `electron .`) and
-// drives its window over the Chromium DevTools protocol:
+// drives its window over the Chromium DevTools protocol (a few commands sent
+// straight over a WebSocket, so the only dependency is Node itself):
 //   - the fuses that lock the binary down are set
 //   - the dashboard loads from inside the asar archive
 //   - a site can be created, lands in the home directory and opens
@@ -14,7 +15,6 @@ const net = require("net");
 const os = require("os");
 const path = require("path");
 const { spawn } = require("child_process");
-const { chromium } = require("playwright-core");
 
 const appName = "haxtheweb-desktop";
 const root = path.join(__dirname, "..");
@@ -66,6 +66,62 @@ async function waitFor(what, fn, timeoutMs) {
   throw new Error(`timed out waiting for ${what}${lastError ? `: ${lastError.message}` : ""}`);
 }
 
+// Minimal DevTools protocol client for one target.
+function connectDevTools(webSocketUrl) {
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(webSocketUrl);
+    const pending = new Map();
+    let nextId = 0;
+    socket.addEventListener("message", (event) => {
+      const message = JSON.parse(event.data);
+      const waiting = pending.get(message.id);
+      if (waiting) {
+        pending.delete(message.id);
+        if (message.error) {
+          waiting.reject(new Error(message.error.message));
+        } else {
+          waiting.resolve(message.result);
+        }
+      }
+    });
+    socket.addEventListener("error", () => reject(new Error(`could not connect to ${webSocketUrl}`)));
+    socket.addEventListener("close", () => {
+      for (const waiting of pending.values()) {
+        waiting.reject(new Error("DevTools connection closed"));
+      }
+      pending.clear();
+    });
+    socket.addEventListener("open", () => {
+      const client = {
+        send(method, params) {
+          return new Promise((res, rej) => {
+            const id = ++nextId;
+            pending.set(id, { resolve: res, reject: rej });
+            socket.send(JSON.stringify({ id: id, method: method, params: params || {} }));
+          });
+        },
+        // runs a function in the page and returns its (awaited) JSON value
+        async evaluate(fn) {
+          const result = await client.send("Runtime.evaluate", {
+            expression: `(${fn.toString()})()`,
+            awaitPromise: true,
+            returnByValue: true,
+          });
+          if (result.exceptionDetails) {
+            const details = result.exceptionDetails;
+            throw new Error((details.exception && details.exception.description) || details.text);
+          }
+          return result.result.value;
+        },
+        close() {
+          socket.close();
+        },
+      };
+      resolve(client);
+    });
+  });
+}
+
 async function checkFuses(executable) {
   const { getCurrentFuseWire, FuseV1Options, FuseState } = await import("@electron/fuses");
   // on macOS the fuse wire lives in the framework inside the .app bundle
@@ -115,44 +171,27 @@ async function run() {
     exited = true;
   });
 
-  let browser = null;
+  let page = null;
   try {
-    await waitFor(
-      "the app's DevTools endpoint",
+    const debugOrigin = `http://127.0.0.1:${debugPort}`;
+    // the window shows a static spinner first, then the local server
+    const target = await waitFor(
+      "the window to load the local HAXcms server",
       async () => {
         assert.ok(!exited, "app exited during startup");
-        const res = await fetch(`http://127.0.0.1:${debugPort}/json/version`);
-        return res.ok;
+        const targets = await (await fetch(`${debugOrigin}/json/list`)).json();
+        return targets.find((t) => t.type === "page" && /^http:\/\/127\.0\.0\.1:\d+\//.test(t.url));
       },
-      60000,
+      90000,
     );
-    // attaching can be slow while the dashboard is still loading its modules
-    browser = await waitFor(
-      "a DevTools connection",
-      () => chromium.connectOverCDP(`http://127.0.0.1:${debugPort}`, { timeout: 45000 }),
-      180000,
-    );
-    const page = await waitFor(
-      "the window to load the local HAXcms server",
-      () => {
-        for (const context of browser.contexts()) {
-          for (const candidate of context.pages()) {
-            if (/^http:\/\/127\.0\.0\.1:\d+\//.test(candidate.url())) {
-              return candidate;
-            }
-          }
-        }
-        return null;
-      },
-      60000,
-    );
-    const origin = new URL(page.url()).origin;
+    const origin = new URL(target.url).origin;
+    page = await connectDevTools(target.webSocketDebuggerUrl);
 
     // dashboard: app-hax is served out of the asar archive and upgrades
-    await page.waitForFunction(
-      () => !!document.querySelector("app-hax") && !!globalThis.customElements.get("app-hax"),
-      null,
-      { timeout: 60000 },
+    await waitFor(
+      "the dashboard (app-hax) to load",
+      () => page.evaluate(() => !!document.querySelector("app-hax") && !!globalThis.customElements.get("app-hax")),
+      90000,
     );
     console.log("ok dashboard loads");
 
@@ -193,11 +232,17 @@ async function run() {
     console.log("ok site created");
 
     // the new site opens and its builder element upgrades
-    await page.goto(`${origin}/_sites/apptest/`);
-    await page.waitForFunction(
-      () => !!document.querySelector("haxcms-site-builder") && !!globalThis.customElements.get("haxcms-site-builder"),
-      null,
-      { timeout: 60000 },
+    await page.send("Page.navigate", { url: `${origin}/_sites/apptest/` });
+    await waitFor(
+      "the new site to open",
+      () =>
+        page.evaluate(
+          () =>
+            globalThis.location.pathname.indexOf("/_sites/apptest/") === 0 &&
+            !!document.querySelector("haxcms-site-builder") &&
+            !!globalThis.customElements.get("haxcms-site-builder"),
+        ),
+      90000,
     );
     console.log("ok site opens");
 
@@ -208,14 +253,17 @@ async function run() {
     assert.strictEqual(popup, true, "window.open to another origin is denied");
     await page.evaluate(() => {
       globalThis.location.href = "ftp://navigation-guard.invalid/";
+      return true;
     });
     await sleep(1500);
-    assert.ok(page.url().indexOf(origin) === 0, `navigation off the server is blocked (at ${page.url()})`);
+    const after = await page.evaluate(() => globalThis.location.href);
+    assert.ok(after.indexOf(origin) === 0, `navigation off the server is blocked (at ${after})`);
     console.log("ok navigation guard");
 
     // closing the app stops the server
-    const session = await browser.newBrowserCDPSession();
-    await session.send("Browser.close").catch(() => {});
+    const version = await (await fetch(`${debugOrigin}/json/version`)).json();
+    const browser = await connectDevTools(version.webSocketDebuggerUrl);
+    await browser.send("Browser.close").catch(() => {});
     await waitFor("the app to exit", () => exited, 20000).catch(() => {});
     if (!exited) {
       // macOS apps stay open with no windows; ask it to quit
@@ -233,8 +281,8 @@ async function run() {
     console.error(output.slice(-4000));
     throw e;
   } finally {
-    if (browser) {
-      await browser.close().catch(() => {});
+    if (page) {
+      page.close();
     }
     if (!exited) {
       child.kill("SIGKILL");

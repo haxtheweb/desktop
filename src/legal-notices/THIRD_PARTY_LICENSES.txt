@@ -1,7 +1,7 @@
 THIRD-PARTY LICENSE NOTICES — haxtheweb-desktop
 Version: 26.0.0   License: Apache-2.0
 Generated: 2026-11-14
-Total packages: 988
+Total packages: 987
 
 This application is distributed in binary form. Bundled third-party
 software is listed below with its license and source location.
@@ -208,7 +208,7 @@ FULL BUNDLED PACKAGE LIST (grouped by license family)
   type-fest@0.8.1  [(MIT OR CC0-1.0)]  https://github.com/sindresorhus/type-fest
   type-fest@0.18.1  [(MIT OR CC0-1.0)]  https://github.com/sindresorhus/type-fest
 
-## permissive  (975)
+## permissive  (974)
 
   @alcalzone/ansi-tokenize@0.3.1  [MIT]  https://github.com/AlCalzone/ansi-tokenize
   @asamuzakjp/css-color@3.2.0  [MIT]  https://github.com/asamuzaK/cssColor
@@ -928,7 +928,6 @@ FULL BUNDLED PACKAGE LIST (grouped by license family)
   pify@2.3.0  [MIT]  https://github.com/sindresorhus/pify
   pirates@4.0.7  [MIT]  https://github.com/danez/pirates
   pkg-dir@3.0.0  [MIT]  https://github.com/sindresorhus/pkg-dir
-  playwright-core@1.65.1  [Apache-2.0]  https://github.com/microsoft/playwright
   plist@3.1.1  [MIT]  https://github.com/TooTallNate/node-plist
   pluralize@8.0.0  [MIT]  https://github.com/blakeembrey/pluralize
   postject@1.0.0-alpha.6  [MIT]  https://github.com/nodejs/postject
