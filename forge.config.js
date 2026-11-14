@@ -41,7 +41,7 @@ module.exports = {
     executableName: "haxtheweb-desktop",
     appBundleId: "org.haxtheweb.desktop",
     appCategoryType: "public.app-category.education",
-    // packager picks favicon.ico / favicon.icns per platform when present
+    // packager picks favicon.ico (Windows) or favicon.icns (macOS)
     icon: "./src/favicon",
     ignore: ignore,
     // offline or proxied builds: a folder already holding the Electron zip
@@ -92,7 +92,9 @@ module.exports = {
     {
       name: "@electron-forge/maker-dmg",
       platforms: ["darwin"],
-      config: {},
+      config: {
+        icon: "./src/favicon.icns",
+      },
     },
     {
       // zip of the app: the macOS auto-update format, and a no-install
@@ -112,6 +114,7 @@ module.exports = {
           maintainer: "HAXTheWeb core team",
           homepage: "https://haxtheweb.org/",
           categories: ["Education", "Development"],
+          icon: "./src/favicon.png",
         },
       },
     },
