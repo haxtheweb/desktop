@@ -22,7 +22,6 @@ const ignore = [
   /^\/scripts($|\/)/,
   /^\/test($|\/)/,
   /^\/docs($|\/)/,
-  /^\/packaging($|\/)/,
   /^\/screenshots($|\/)/,
   /^\/builds($|\/)/,
   /^\/out($|\/)/,
