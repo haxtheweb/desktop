@@ -1,0 +1,55 @@
+name: dependency-audit
+# Known advisories in what the packaged app ships. Only production
+# dependencies count (the app does not ship build tooling), and only high
+# and critical advisories fail.
+#
+# pull_request: runs when the dependency manifests change and reports what it
+# finds in the job summary without failing the PR, so an advisory published
+# against an existing dependency does not block unrelated work.
+#
+# schedule (weekly, Sunday) and workflow_dispatch: fails when a high or
+# critical advisory is open, which is the signal to refresh package-lock.json
+# (`npm audit fix`) or move to a fixed @haxtheweb/haxcms-nodejs release.
+on:
+  pull_request:
+    paths:
+      - package.json
+      - package-lock.json
+      - .github/workflows/dependency-audit.yml
+  schedule:
+    - cron: "52 22 * * 0" # weekly, Sunday 22:52 UTC
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    name: "Production dependency advisories"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - name: Audit production dependencies
+        env:
+          REPORT_ONLY: ${{ github.event_name == 'pull_request' }}
+        run: |
+          set +e
+          npm audit --omit=dev --audit-level=high > audit.txt 2>&1
+          status=$?
+          {
+            echo '### Production dependency advisories'
+            echo '```'
+            tail -n 60 audit.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat audit.txt
+          if [ "$status" -ne 0 ] && [ "$REPORT_ONLY" = "true" ]; then
+            echo "::warning title=Dependency advisories::npm audit found high or critical advisories in production dependencies (reported only on pull requests)."
+            exit 0
+          fi
+          exit "$status"
