@@ -1,0 +1,7 @@
+name: "haxtheweb/haxcms-desktop CodeQL config"
+
+# dist/ and builds/ are build output (babel's copy of src/ and the packaged
+# app); the source that is reviewed is src/ and scripts/.
+paths-ignore:
+  - dist/**
+  - builds/**
